@@ -1,54 +1,43 @@
 
+from .app_factory import create_app_with_redis
 from fastapi import FastAPI
 from pydantic import BaseModel
+from .app import App
+from fastapi.responses import Response
 
 
-app = FastAPI()
+backend: App = create_app_with_redis()
+app: FastAPI = FastAPI(version="1.1.0", title="Backend API")
 
 
-class Password(BaseModel):
+class NewPassword(BaseModel):
     password: str
 
 
 class Request(BaseModel):
     password: str
-    data: int = 0
 
-
-class Counters(BaseModel):
-    successes: int = 0
-    failures: int = 0
-
-
-password: Password = Password(password="1234")
-counters: Counters = Counters()
 
 @app.get("/")
-def dashboard():
-    return {"successes": counters.successes, "failures": counters.failures}
+def dashboard() -> dict:
+    return backend.get_counters()
 
-@app.get("/reset")
-def reset():
-    counters.successes = 0
-    counters.failures = 0
-    password.password = "1234"
-    return {"successes": counters.successes, "failures": counters.failures}
+@app.put("/reset")
+def reset() -> Response:
+    backend.reset()
+    return Response(status_code=204)
 
 @app.get("/get-password")
-def get_password():
-    return {"password": password.password}
+def get_password() -> dict:
+    return {"password": backend.get_password()}
 
 @app.put("/set-password")
-def set_password(new_password: Password):
-    password.password = new_password.password
-    return {"password": password.password}
+def set_password(new_password: NewPassword) -> Response:
+    backend.set_password(new_password.password)
+    return Response(status_code=204)
 
 @app.post("/send-request")
-def send_request(request: Request):
-    if request.password == password.password:
-        counters.successes += 1
-        return {"success": True}
-    else:
-        counters.failures += 1
-        return {"success": False, "error": "Wrong password"}
+def send_request(request: Request) -> dict:
+    result: bool = backend.do_action(request.password)
+    return {"result": result}
 
