@@ -22,9 +22,11 @@ class RedisRepository(RepositoryAbstract):
         self.redis.set(self.key_password, password)
 
     def get_counters(self) -> dict:
+        successes: str = self.decode_to_str(self.key_successes)
+        failures: str = self.decode_to_str(self.key_failures)
         return {
-            self.key_successes: int(self.decode_to_str(self.key_successes)),
-            self.key_failures: int(self.decode_to_str(self.key_failures)),
+            self.key_successes: self._convert_to_int(successes),
+            self.key_failures: self._convert_to_int(failures),
         }
 
     def set_counters(self, **counters) -> None:
@@ -36,4 +38,9 @@ class RedisRepository(RepositoryAbstract):
 
     def increment_failures(self) -> None:
         self.redis.incr(self.key_failures)
+
+    def _convert_to_int(self, value: str) -> int:
+        if value.isdigit():
+            return int(value)
+        return 0
 
